@@ -1,0 +1,194 @@
+<!--
+  Copyright 2018 Google Inc.
+
+  Licensed under the Apache License, Version 2.0 (the "License");
+  you may not use this file except in compliance with the License.
+  You may obtain a copy of the License at
+
+       http://www.apache.org/licenses/LICENSE-2.0
+
+  Unless required by applicable law or agreed to in writing, software
+  distributed under the License is distributed on an "AS IS" BASIS,
+  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  See the License for the specific language governing permissions and
+  limitations under the License.
+-->
+
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js">
+</script>
+<script>
+var currentDialogHeight = 130;
+
+/**
+ * Run initializations on dialog load.
+ */
+$(function() {
+  // Assign handler functions to dialog elements here
+  $('#dialog-execute-button').click(onExecuteClick);
+  $('#dialog-userprofile-select').change(onUserProfileChange);
+  $('#unlink-report').click(onUnlinkClick);
+  google.script.run.withSuccessHandler(onSuccessHandler_getCurrentLinkedReport)
+      .withUserObject(this)
+      .retrieveLinkedReport();
+});
+
+
+/**
+ * Called after the readable string format is successfully returned.
+ * @param {string} strReadableLinkedReport Readable string format of the
+ *     current linked reoprt.
+ */
+function onSuccessHandler_getCurrentLinkedReport(strReadableLinkedReport) {
+  showLinkedReport(strReadableLinkedReport);
+}
+
+/**
+ * Function gets called when the user profile changes.
+ */
+function onUserProfileChange() {
+  if (!$('#dialog-report-select').is(":visible")) {
+    currentDialogHeight += 50;
+    google.script.host.setHeight(currentDialogHeight);
+  }
+
+  $('#label-report').show();
+  $('#dialog-report-select').show();
+  $('#dialog-report-select')
+      .find('option')
+      .remove()
+      .end()
+      .append('<option value="--">Select</option>')
+      .val('--');
+
+  google.script.run.withSuccessHandler(onSuccessHandler_getReportList)
+      .withUserObject(this)
+      .getReportList($('#dialog-userprofile-select option:selected').val());
+}
+
+/**
+ * Called after successfully getting the list of reports.
+ * @param {?Array<Object>} reports The list of reports.
+ */
+function onSuccessHandler_getReportList(reports) {
+  if (!reports || reports.length == 0) {
+    showStatus('No Reports for this Profile ID', 'error');
+  } else {
+    showStatus('Successfully retrieved report list');
+    $("#dialog-button-bar").show();
+  }
+
+  for (var i = 0; i < reports.length; i++) {
+    $('#dialog-report-select')
+        .append('<option value="' + reports[i].id + '">' + reports[i].name +
+                '</option>');
+  }
+}
+
+/**
+ * Called when an unlink event is raised.
+ * @param {?Object} event The event that triggers this function.
+ */
+function onUnlinkClick(event) {
+  event.preventDefault();
+  google.script.run.withSuccessHandler(onSuccessHandler_unlinkReport)
+      .withFailureHandler(onFailHandler_unlinkReport)
+      .withUserObject(this)
+      .unlinkReport();
+}
+
+/**
+ * Called after unlinking report successfully.
+ * @param {string} strReadableLinkedReport Readable string format of the
+ *    unlinked report.
+ */
+function onSuccessHandler_unlinkReport(strReadableLinkedReport) {
+  // showStatus('Report Unlink successful.');
+  showLinkedReport(strReadableLinkedReport);
+  showStatus("");
+}
+
+/**
+ * Called after unlinking report fails.
+ * @param {string} msg The error message.
+ */
+function onFailHandler_unlinkReport(msg) {
+  showStatus('Unlink failed: ' + msg, 'error');
+}
+
+/**
+ * Populate the sheet with right data.
+ */
+function onExecuteClick() {
+  this.disabled = true;
+  var reportId = $('#dialog-report-select option:selected').val();
+  var reportName = $('#dialog-report-select option:selected').text();
+  var profileId = $('#dialog-userprofile-select option:selected').val();
+  var profileName = $('#dialog-userprofile-select option:selected').text();
+  var networkId =
+      profileName.substring(0, profileName.indexOf("-")).replace(/\s+/g, '');
+  showStatus('Working...');
+  // Send the value to the server and handle the response.
+  google.script.run.withSuccessHandler(onSuccessHandler_getReport)
+      .withFailureHandler(onFailHandler_getReport)
+      .withUserObject(this)
+      .pullReport(profileId, reportId, reportName, null, networkId);
+}
+
+/**
+ * Called when report is successfully fetched.
+ * @param {string} strReadableLinkedReport Readable string format of the
+ *     linked report.
+ * @param {Object} element The element that needs to be enabled.
+ */
+function onSuccessHandler_getReport(strReadableLinkedReport, element) {
+  showStatus('Execution successful.');
+  element.disabled = false;
+  showLinkedReport(strReadableLinkedReport);
+}
+
+/**
+ * Called when report fetch fails.
+ * @param {string} msg The error message.
+ * @param {Object} element The element that needs to be enabled.
+ */
+function onFailHandler_getReport(msg, element) {
+  showStatus('Execution failed: ' + msg, 'error');
+  element.disabled = false;
+}
+
+/**
+ * Function to show the current linked report.
+ * @param {string} strReadableLinkedReport Readable string format of the
+ *     current linked report.
+ */
+function showLinkedReport(strReadableLinkedReport) {
+  $("#current-linked-report").html(strReadableLinkedReport);
+
+  if (strReadableLinkedReport != "" && !$("#unlink-report").is(":visible")) {
+    $("#unlink-report").show();
+    currentDialogHeight += 50;
+    google.script.host.setHeight(currentDialogHeight);
+  } else if (strReadableLinkedReport == "" &&
+             $("#unlink-report").is(":visible")) {
+    $("#unlink-report").hide();
+    currentDialogHeight -= 50;
+    google.script.host.setHeight(currentDialogHeight);
+  }
+
+  $("#current-linked-report").html(strReadableLinkedReport);
+}
+
+/**
+ * Displays the given status message in the dialog.
+ * @param {string} msg The status message to display.
+ * @param {string} classId The message type (class id) that the message
+ *   should be displayed as.
+ */
+function showStatus(msg, classId) {
+  $('#dialog-status').show();
+  $('#dialog-status').removeClass().html(msg);
+  if (classId) {
+    $('#dialog-status').addClass(classId);
+  }
+}
+</script>

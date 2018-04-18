@@ -1,0 +1,49 @@
+<!--
+  Copyright 2018 Google Inc.
+
+  Licensed under the Apache License, Version 2.0 (the "License");
+  you may not use this file except in compliance with the License.
+  You may obtain a copy of the License at
+
+       http://www.apache.org/licenses/LICENSE-2.0
+
+  Unless required by applicable law or agreed to in writing, software
+  distributed under the License is distributed on an "AS IS" BASIS,
+  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  See the License for the specific language governing permissions and
+  limitations under the License.
+-->
+
+<!DOCTYPE html>
+<meta charset="utf-8">
+<!-- Use a templated HTML printing scriptlet to import common stylesheet. -->
+<?!= HtmlService.createHtmlOutputFromFile('Stylesheet').getContent(); ?>
+
+<!-- Below is the HTML code that defines the dialog element structure. -->
+
+  <div class="block form-group" id="dialog-elements">
+    <ul>
+    <?
+    var sheets = SpreadsheetApp.getActiveSpreadsheet().getSheets();
+    for(var i=0;i<sheets.length;i++) {
+      var documentProperties = PropertiesService.getDocumentProperties();
+      var currentSheetId = sheets[i].getSheetId();
+      var profileId = documentProperties.getProperty(
+          currentSheetId+"_PROFILE_ID");
+      if(profileId==null || profileId == "") {
+        continue;
+      }
+      var lastSyncDetails = documentProperties.getProperty(
+          currentSheetId+"_LAST_SYNC");
+      if(lastSyncDetails == null) {
+        lastSyncDetails = "Never";
+      }
+    ?>
+      <li>
+      <?= sheets[i].getSheetName() ?> last synced on: <?=lastSyncDetails ?>
+      </li>
+    <?
+    }
+    ?>
+    </ul>
+</div>
