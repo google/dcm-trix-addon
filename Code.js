@@ -220,25 +220,62 @@ function pullNewDataAll() {
  * Function called from DialogJavaScript.html to show the list of reports for a
  * profile id.
  * @param {string} profileId The user profile to fetch existing reports for.
- * @param {string} networkId The network to fetch the reports from.
  * @return {Array<string>} The list of reports.
  */
-function getReportList(profileId, networkId) {
+function getReportList(profileId) {
+  var values = {
+    'sortField': 'ID',
+    }
   var reportList = [];
-  var result = DoubleClickCampaigns.Reports.list(profileId);
+  var result = DoubleClickCampaigns.Reports.list(profileId, values);
   if (!result) {
     throw new Error('Unable to fetch reports from DCM');
   }
   var reports = result.items;
   var reportList = [];
+  var nextToken = result.nextPageToken;
   for (var i = 0; i < reports.length; i++) {
     if (reports[i].format == 'CSV') {
       reportList.push({'id' : reports[i].id, 'name' : reports[i].name});
     }
   }
+  if(nextToken){
+    getNextPage(profileId, nextToken, reportList)
+  }
   return reportList;
   
 }
+
+/**
+ * Helper function for getReportList function to fetch all report pages, now that the API returns only 10 results per page. 
+ * Recursive function that will keep looking for nextPages until there's no nextPageToken left.
+ * @param {string} profileId The user profile to fetch existing reports for.
+ * @param {string} nextPageToken The next page Token returned when using the getReportList function.
+ * @param {string} reportList The list with all the current reports already fetched from the requests.
+ * @return {Array<string>} The list of reports.
+ */
+function getNextPage(profileId, nextPageToken, reportList){
+  var values = {
+    'sortField': 'ID',
+    'pageToken': nextPageToken
+    }
+  var result = DoubleClickCampaigns.Reports.list(profileId,values);
+    if (!result) {
+    throw new Error('Unable to fetch reports from DCM');
+  }
+  var reports = result.items;
+  var nextToken = result.nextPageToken
+  for (var i = 0; i < reports.length; i++) {
+    if (reports[i].format == 'CSV') {
+      reportList.push({'id' : reports[i].id, 'name' : reports[i].name});
+    }
+  }
+  if(nextToken){
+    return getNextPage(profileId,nextToken,reportList)
+  } 
+  return reportList
+}
+
 
 /**
  * Check each worksheet and see if it is linked to a DCM report.
