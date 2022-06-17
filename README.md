@@ -91,7 +91,7 @@ Once completed, move to the next section to continue the setup.
 ## Setting up Time Zone
 
 1. Go to `Project Settings` and change the Time Zone to the desired one. This will directly influence in the Scheduling function of the code.
-1. If no changes are mare in this section, the Timezone selected for the Project will be GMT-03:00.
+1. If no changes are made in this section, the Timezone selected for the Project will be GMT-03:00.
 
 ## Setting up authentication
 

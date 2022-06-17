@@ -22,8 +22,8 @@
  * @param {Object} e The event parameter for a simple onOpen trigger.
  */
 function onOpen(e) {
-  var menu = SpreadsheetApp.getUi().createAddonMenu();
-  menu.addItem('Select DCM Report', 'showDialog')
+  var menu = SpreadsheetApp.getUi().createMenu('CM_Reporting')
+  menu.addItem('Select CM Report', 'showDialog')
       .addItem('Refresh current sheet', 'refreshCurrentSheet')
       .addItem('Refresh all sheets', 'refreshAllSheets')
       .addItem('Check Last sync time', 'showLastSyncDetails')
@@ -223,13 +223,14 @@ function pullNewDataAll() {
  * @return {Array<string>} The list of reports.
  */
 function getReportList(profileId) {
-  var values = {
+    var values = {
     'sortField': 'ID',
+    'sortOrder': "DESCENDING"
     }
   var reportList = [];
-  var result = DoubleClickCampaigns.Reports.list(profileId, values);
+  var result = DoubleClickCampaigns.Reports.list(profileId,values);
   if (!result) {
-    throw new Error('Unable to fetch reports from DCM');
+    throw new Error('Unable to fetch reports from CM');
   }
   var reports = result.items;
   var reportList = [];
@@ -242,7 +243,8 @@ function getReportList(profileId) {
   if(nextToken){
     getNextPage(profileId, nextToken, reportList)
   }
-  return reportList;
+  console.log("Returning only reportList");
+  return [reportList,nextToken];
   
 }
 
@@ -255,13 +257,14 @@ function getReportList(profileId) {
  * @return {Array<string>} The list of reports.
  */
 function getNextPage(profileId, nextPageToken, reportList){
-  var values = {
+  var values  = {
     'sortField': 'ID',
+    'sortOrder': "DESCENDING",
     'pageToken': nextPageToken
     }
   var result = DoubleClickCampaigns.Reports.list(profileId,values);
     if (!result) {
-    throw new Error('Unable to fetch reports from DCM');
+    throw new Error('Unable to fetch reports from CM');
   }
   var reports = result.items;
   var nextToken = result.nextPageToken
@@ -270,12 +273,11 @@ function getNextPage(profileId, nextPageToken, reportList){
       reportList.push({'id' : reports[i].id, 'name' : reports[i].name});
     }
   }
-  if(nextToken){
+  if(nextToken && reportList.length <= 40){
     return getNextPage(profileId,nextToken,reportList)
   } 
-  return reportList
+  return [reportList,nextToken]
 }
-
 
 /**
  * Check each worksheet and see if it is linked to a DCM report.
@@ -294,7 +296,7 @@ function DCM_offlineReportSync() {
   // when using triggers with add-ons to maintain functional triggers.
   if (authInfo.getAuthorizationStatus() ==
       ScriptApp.AuthorizationStatus.REQUIRED) {
-    console.warn('DCM Offline Report Sync: Auth Required for: ' +
+    console.warn('CM Offline Report Sync: Auth Required for: ' +
                  SpreadsheetName + '. Url: ' + SpreadsheetURL);
     // Re-authorization is required. In this case, the user needs to be alerted
     // that they need to re-authorize; the normal trigger action is not
@@ -318,7 +320,7 @@ function DCM_offlineReportSync() {
       props.setProperty('lastAuthEmailDate', today);
     }
   } else {
-    console.info('Started DCM offline sync for: ' + SpreadsheetName +
+    console.info('Started CM offline sync for: ' + SpreadsheetName +
                  '. Url: ' + SpreadsheetURL);
     var sheets = SpreadsheetApp.getActiveSpreadsheet().getSheets();
     for (var i = 0; i < sheets.length; i++) {
@@ -334,11 +336,11 @@ function DCM_offlineReportSync() {
       }
 
       //try {
-        console.info('Started DCM offline sync for: ' + SpreadsheetName +
+        console.info('Started CM offline sync for: ' + SpreadsheetName +
                      '. Sheet Name: ' + sheets[i].getName() +
                      '. Url: ' + SpreadsheetURL);
         pullNewData(sheets[i]);
-        console.info('Finished DCM offline sync for: ' + SpreadsheetName +
+        console.info('Finished CM offline sync for: ' + SpreadsheetName +
                      '. Sheet Name: ' + sheets[i].getName() +
                      '. Url: ' + SpreadsheetURL);
       /*} catch (e) {
@@ -363,7 +365,7 @@ function DCM_offlineReportSync() {
  * @param {string} reportId The id of the report to fetch.
  * @param {string} reportName The name of the report to fetch.
  * @param {number} currentSheetId The id of the sheet to populate.
- * @param {string} networkId The dcm network id.
+ * @param {string} networkId The cm network id.
  * @return {string} Human readable summary of the linked report.
  */
 function pullReport(
@@ -380,7 +382,7 @@ function pullReport(
     throw (e);
   }
   SpreadsheetApp.getActiveSpreadsheet().toast(
-      'DCM report data added. You can now manually refresh or setup a scheduled sync',
+      'CM report data added. You can now manually refresh or setup a scheduled sync',
       'Status',
       5);
   return strReadableLinkedReport;
@@ -402,7 +404,7 @@ function getReport(
   var SpreadsheetName = SpreadsheetApp.getActiveSpreadsheet().getName();
   var SpreadsheetURL = SpreadsheetApp.getActiveSpreadsheet().getUrl();
   SpreadsheetApp.getActiveSpreadsheet().toast(
-      'Pulling DCM report...', 'Status', -1);
+      'Pulling CM report...', 'Status', -1);
   var result;
   var latestReportFile;
   var file;
@@ -419,7 +421,7 @@ function getReport(
       profileId, reportId, {'sortField' : 'LAST_MODIFIED_TIME'});
   if (!result) {
     throw new Error(
-        'Cannot fetch report files at this moment. Please check if there any DCM report files');
+        'Cannot fetch report files at this moment. Please check if there any CM report files');
   }
   if (result.items) {
     latestReportFile = result.items[0];
@@ -430,7 +432,7 @@ function getReport(
                         reportName);
       }
     }
-    console.info('Found DCM Report for ' + SpreadsheetName +
+    console.info('Found CM Report for ' + SpreadsheetName +
                  '. Sheet Name: ' + sheet.getName() +
                  '. Url: ' + SpreadsheetURL);
   }
@@ -449,12 +451,12 @@ function getReport(
     var httpOptions = {'headers' : {'Authorization' : 'Bearer ' + OAuthToken}};
     var contents = UrlFetchApp.fetch(file.urls.apiUrl, httpOptions);
     if (file.format == 'CSV') {
-      console.info('Pulling DCM Report File for ' + SpreadsheetName +
+      console.info('Pulling CM Report File for ' + SpreadsheetName +
                    '. Sheet Name: ' + sheet.getName() +
                    '. Url: ' + SpreadsheetURL);
       populateSpreadsheet(
           contents.getContentText(), file.fileName, currentSheetId);
-      console.info('Finished Pulling DCM Report File for ' + SpreadsheetName +
+      console.info('Finished Pulling CM Report File for ' + SpreadsheetName +
                    '. Sheet Name: ' + sheet.getName() +
                    '. Url: ' + SpreadsheetURL);
     } else { // Store the Excel file directly in Drive
