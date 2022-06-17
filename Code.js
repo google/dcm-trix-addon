@@ -257,26 +257,25 @@ function getReportList(profileId) {
  * @return {Array<string>} The list of reports.
  */
 function getNextPage(profileId, nextPageToken, reportList){
-  var newValues = {
+  var values  = {
     'sortField': 'ID',
     'sortOrder': "DESCENDING",
     'pageToken': nextPageToken
     }
-  var newResult = DoubleClickCampaigns.Reports.list(profileId,newValues);
-    if (!newResult) {
+  var result = DoubleClickCampaigns.Reports.list(profileId,values);
+    if (!result) {
     throw new Error('Unable to fetch reports from CM');
   }
-  var newReports = newResult.items;
-  var nextToken = newResult.nextPageToken
-  for (var i = 0; i < newReports.length; i++) {
-    if (newReports[i].format == 'CSV') {
-      reportList.push({'id' : newReports[i].id, 'name' : newReports[i].name});
+  var reports = result.items;
+  var nextToken = result.nextPageToken
+  for (var i = 0; i < reports.length; i++) {
+    if (reports[i].format == 'CSV') {
+      reportList.push({'id' : reports[i].id, 'name' : reports[i].name});
     }
   }
   if(nextToken && reportList.length <= 40){
     return getNextPage(profileId,nextToken,reportList)
   } 
-  console.log("returning reportList and Token")
   return [reportList,nextToken]
 }
 
