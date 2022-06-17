@@ -25,6 +25,7 @@ var currentDialogHeight = 130;
 $(function() {
   // Assign handler functions to dialog elements here
   $('#dialog-execute-button').click(onExecuteClick);
+  $('#next-page-token').click(onNextPageClick);
   $('#dialog-userprofile-select').change(onUserProfileChange);
   $('#unlink-report').click(onUnlinkClick);
   google.script.run.withSuccessHandler(onSuccessHandler_getCurrentLinkedReport)
@@ -70,18 +71,21 @@ function onUserProfileChange() {
  * @param {?Array<Object>} reports The list of reports.
  */
 function onSuccessHandler_getReportList(reports) {
-  if (!reports || reports.length == 0) {
+  if (!reports[0] || reports[0].length == 0) {
     showStatus('No Reports for this Profile ID', 'error');
   } else {
     showStatus('Successfully retrieved report list');
+    $("#next-page-token").show();
+    document.getElementById("next-page-token").setAttribute("value", reports[1]);
     $("#dialog-button-bar").show();
   }
-
-  for (var i = 0; i < reports.length; i++) {
+  for (var i = 0; i < reports[0].length; i++) {
     $('#dialog-report-select')
-        .append('<option value="' + reports[i].id + '">' + reports[i].name +
+        .append('<option value="' + reports[0][i].id + '">' + reports[0][i].name +
                 '</option>');
   }
+  console.log($("#next-page-token").val());
+  $('#next-page-token').prop('disabled', false);
 }
 
 /**
@@ -133,7 +137,20 @@ function onExecuteClick() {
       .withUserObject(this)
       .pullReport(profileId, reportId, reportName, null, networkId);
 }
+function onNextPageClick() {
+  this.disabled = true;
+  var nextToken = $("#next-page-token").val();
+  var profileId = $('#dialog-userprofile-select option:selected').val();
+  var reportList = [];
+  console.log('clicking nextPageClick');
+  $('#dialog-report-select').find('option').remove().end().append('<option value="--">Select</option>').val('--');
+  google.script.run.withSuccessHandler(onSuccessHandler_getReportList)
+      .withUserObject(this)
+      .getNextPage(profileId,nextToken,reportList);
+      
 
+
+}
 /**
  * Called when report is successfully fetched.
  * @param {string} strReadableLinkedReport Readable string format of the

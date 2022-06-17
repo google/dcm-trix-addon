@@ -26,7 +26,7 @@ var SERVICENAME = 'dfareporting';
  * Name of the addon.
  * @const {string}
  */
-var ADDON_TITLE = 'DCM Report - Google Sheets Addon';
+var ADDON_TITLE = 'CM Report - Google Sheets Addon';
 
 /**
  * Scopes used by the addon.
@@ -99,7 +99,7 @@ var DAILY_FREQUENCY = [
  * Title of the dialog.
  * @const {string}
  */
-var DIALOG_TITLE = 'DCM Report Selection';
+var DIALOG_TITLE = 'CM Report Selection';
 
 /**
  * Property identifier for frequency.
